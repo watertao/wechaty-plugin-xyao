@@ -1,0 +1,65 @@
+{
+  "name": "wechaty-plugin-xyao",
+  "version": "0.1.0",
+  "description": "Instruction Distribution Plugin for Wechaty",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "dependencies": {
+    "wechaty-plugin-contrib": "^0.14.2",
+    "redis": "^3.0.2",
+    "@types/redis": "^2.8.25",
+    "lodash.trim": "^4.5.1",
+    "@types/lodash.trim": "^4.5.6",
+    "lodash.indexof": "^4.0.5",
+    "@types/lodash.indexof": "^4.0.6",
+    "lodash.truncate": "^4.4.2",
+    "@types/lodash.truncate": "^4.4.6"
+  },
+  "devDependencies": {
+    "@chatie/eslint-config": "^0.11.4",
+    "@chatie/git-scripts": "^0.6.2",
+    "@chatie/semver": "^0.4.7",
+    "@chatie/tsconfig": "^0.10.1",
+    "@types/body-parser": "^1.19.0",
+    "@types/express": "^4.17.6",
+    "pkg-jq": "^0.2.4",
+    "shx": "^0.3.2",
+    "tstest": "^0.4.10",
+    "wechaty": "^0.43.2",
+    "wechaty-puppet-mock": "^0.22.31"
+  },
+  "private": false,
+  "main": "dist/src/mod.js",
+  "files": ["src"],
+  "scripts": {
+    "example": "ts-node examples/xyao-bot.ts",
+    "start": "npm run example"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/watertao/wechaty-plugin-xyao.git"
+  },
+  "keywords": [
+    "wechaty",
+    "plugin",
+    "wechaty-plugin",
+    "xyao",
+    "chatbot"
+  ],
+  "author": "watertao <1059912278@qq.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/watertao/wechaty-plugin-xyao/issues"
+  },
+  "git": {
+    "scripts": {
+      "pre-push": "npx git-scripts-pre-push"
+    }
+  },
+  "publishConfig": {
+    "tag": "next"
+  },
+  "homepage": "https://github.com/watertao/wechaty-plugin-xyao"
+}
