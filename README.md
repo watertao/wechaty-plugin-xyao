@@ -20,6 +20,14 @@ brain 模块的开发并不限定语言或平台，任何能够连上 redis 并�
 开发，会有一个基于 java springboot 的开发框架用于开发 brain，它会尽量将业务无关部分的逻辑统一处理掉，并提供诸如 help 或 echo 等常见指令。
 我们只需要专注于实现特定领域的指令处理逻辑即可。
 
+## 已完成或计划中的 brain
+
+|  brain  | status | description  |
+|  ----  | ---- | ----  |
+| [xyao-brain-trunk](https://github.com/watertao/xyao-brain-trunk) | 开发中 | 提供了微信机器人基本的处理能力，比如自定义 cron 形式的提醒，设置 todo-list, 消息搬运等特性 |
+| [xyao-brain-jira](https://github.com/watertao/xyao-brain-jira) |  开发中 |提供 atlassion jira 相关的指令，比如将某个群组与某个 JIRA 项目绑定，定期推送每日 issue 进度及工时登录，检查 issue 规范性等 |
+| [xyao-brain-fin-info](https://github.com/watertao/xyao-brain-fin-info) | 待开发 | 提供股市相关信息的查询或推送特性 |
+
 
 ## why wechaty-plugin-xyao
 
@@ -54,7 +62,8 @@ jira:echo tell me what i have said
 - `jira:help` 返回标识为 jira 的 brain 模块所支持的所有的指令
 - `jira:help bind-project` 返回 bind-project 指令的详情，包括支持的选项说明
 - `jira:echo tell me what i have said` 返回 echo 的内容，用于检验该 brain 模块当前是否在线并正常工作
- 
+
+
 
 ## Requirements
 
