@@ -1,4 +1,5 @@
 import { Wechaty, log } from 'wechaty';
+import { PuppetPadplus } from 'wechaty-puppet-padplus';
 import { Xyao } from '../src/mod';
 import {
     EventLogger,
@@ -7,8 +8,12 @@ import {
 
 log.level("info");
 
+const token = 'your PAD-PLUS token';
+const puppet = new PuppetPadplus({ token });
+
 const bot = new Wechaty({
-    name : 'xyao',
+  puppet,
+  name : 'x.yao',
 })
 
 const xyaoConfig = {
