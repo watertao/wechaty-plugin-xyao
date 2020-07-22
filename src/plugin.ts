@@ -26,6 +26,9 @@ export interface XyaoConfig {
   brains_ai?: string,
 
   log_msg_length?: number,
+  log_msg_show_unrelated?: boolean,
+
+  msg_abandon_age?: number,
 
 }
 
@@ -108,10 +111,18 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       return {
         from: { id: message.from()?.id, name: message.from()?.name() },
         isPrivate: message.to() ? true : false,
-        room: message.to() ? null : { id: message.room()?.id, topic: (await message.room()?.topic()) },
+        room: message.room() ? { id: message.room()?.id, topic: (await message.room()?.topic()) } : null,
         command,
       };
     }
+
+    const makeQuestion = async (message: Message) => {
+      return {
+        from: { id: message.from()?.id, name: message.from()?.name() },
+        room: message.room() ? { id: message.room()?.id, topic: (await message.room()?.topic()) } : null,
+        text: message.text(),
+      };
+    };
 
     const onUserLogin = (user: string) => {
       log.info('x.yao', `user successfully logged in : ${ user }`);
@@ -119,12 +130,16 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
 
     const onError = (e: Error) => { log.error('x.yao', `wechaty error - ${ e.message }`) };
 
-    const chkHighFreqMessage = (() => {
+    const chkDirtyMessage = (() => {
       // const freqMap = {};
       return (message: Message): boolean => {
         // const userName = message.from()!.name();
         message.from();
         // todo:
+
+        if (message.age() > config.msg_abandon_age!) {
+          return true;
+        }
         return false;
       }
     })();
@@ -133,7 +148,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       log.info('x.yao', `redis(sub) - ${ message }`)
       const rMessage = JSON.parse(message);
       const { to, room, entities } = rMessage;
-      const toContact = await wechaty.Contact.find({ name: to.name });
+      const toContact = await wechaty.Contact.load(to.id);
       if (!toContact) {
         log.warn('x.yao', `user [ ${ to.name } ] cannot be found, abandon this message`);
         return;
@@ -182,16 +197,17 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
 
     const onWechatyMessage = async (message: Message) => {
       // ignore the messages not related to x.yao
-      if (!message.to() && !(await message.mentionSelf())) {
-        log.info('x.yao', `[ ... ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+      if (message.room() && !(await message.mentionSelf())) {
+        if (config.log_msg_show_unrelated) {
+          log.info('x.yao', `[ ... ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+        }
         return;
       }
 
-      log.info('x.yao', `[ ooo ] ${ message.text() }`)
+      if (chkDirtyMessage(message)) { return; }
 
-      if (chkHighFreqMessage(message)) {
-        log.warn('x.yao', `ignore evil message`)
-      }
+      log.info('x.yao', `[ ooo ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+
 
       // jira:bind-project -p REDKE223
       const text = message.text();
@@ -203,8 +219,9 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
         publisher.publish(channel, instruction);
       } else {
         const channel = config.redis_channel_prefix + config.brains_ai!;
-        log.info('x.yao', `[ >>> ] [ ${ channel } ] ${ text }`);
-        publisher.publish(channel, text);
+        const question = JSON.stringify(await makeQuestion(message));
+        log.info('x.yao', `[ ))) ] [ ${ channel } ] ${ question }`);
+        publisher.publish(channel, question);
       }
     }
 
@@ -213,6 +230,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
     wechaty.on('message', onWechatyMessage);
 
     subscriber.on('message', onRedisMessage);
+    subscriber.subscribe(config.redis_channel_sense!);
 
   }
 }
