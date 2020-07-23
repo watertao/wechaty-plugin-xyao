@@ -127,7 +127,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       return { brain: null, command: ''};
     }
 
-    const makeInstruction = async (message: Message, command: string) => {
+    const makeInstruction = async (message: Message,  command: string) => {
       return {
         from: { id: message.from()?.id, name: message.from()?.name() },
         isPrivate: message.to() ? true : false,
@@ -136,11 +136,11 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       };
     }
 
-    const makeQuestion = async (message: Message) => {
+    const makeQuestion = async (message: Message, processedText: string) => {
       return {
         from: { id: message.from()?.id, name: message.from()?.name() },
         room: message.room() ? { id: message.room()?.id, topic: (await message.room()?.topic()) } : null,
-        text: message.text(),
+        text: processedText,
       };
     };
 
@@ -168,7 +168,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
     const processMessage = (message: Message) => {
       if (message.room()) {
         return message.text()
-          .replace(`@${self!.name}`, '')
+          .replace(`@${self!.name()}`, '')
           .replace(`@${self!.id}`, '')
           .trim();
       }
@@ -251,7 +251,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
         publisher.publish(channel, instruction);
       } else {
         const channel = config.redis_channel_prefix + config.brains_ai!;
-        const question = JSON.stringify(await makeQuestion(message));
+        const question = JSON.stringify(await makeQuestion(message, text));
         log.info(`[ ))) ] [ ${ channel } ] ${ question }`);
         publisher.publish(channel, question);
       }
