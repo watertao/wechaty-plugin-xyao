@@ -1,7 +1,7 @@
 import {
   Wechaty,
   WechatyPlugin,
-  Message, UrlLink, FileBox, Room
+  Message, UrlLink, FileBox, Room, Contact
 } from 'wechaty';
 import { generate } from 'qrcode-terminal'
 import log4js from 'log4js';
@@ -90,7 +90,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
   });
 
   subscriber.on('subscribe', (channel: string, count: number) => {
-    console.log(`[ redis ] subscribe channel: ${ channel }, subscriptions for this client count: %${ count }`)
+    log.info(`[ redis ] subscribe channel: ${ channel }, subscriptions for this client count: %${ count }`)
   });
 
   subscriber.on('error', onRedisError('sub'));
@@ -113,6 +113,8 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
   publisher.on('reconnecting', onReconnecting('pub'))
 
   return function XyaoPlugin (wechaty: Wechaty) {
+
+    let self: Contact|null = null;
 
     const supportedBrain = (text: string) => {
       if (text.indexOf(":") > 0) {
@@ -142,8 +144,9 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       };
     };
 
-    const onUserLogin = (user: string) => {
-      log.info(`user successfully logged in : ${ user }`);
+    const onUserLogin = (user: Contact) => {
+      log.info(`user successfully logged in : ${ user.name() } ( ${ user.id } )`);
+      self = user;
     }
 
     const onError = (e: Error) => { log.error(`wechaty error - ${ e.message }`) };
@@ -161,6 +164,16 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
         return false;
       }
     })();
+
+    const processMessage = (message: Message) => {
+      if (message.room()) {
+        return message.text()
+          .replace(`@${self!.name}`, '')
+          .replace(`@${self!.id}`, '')
+          .trim();
+      }
+      return message.text().trim();
+    }
 
     const onRedisMessage = async (_: string, message: string) => {
       log.info(`[ ^o^ ] - ${ message }`)
@@ -215,7 +228,8 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
 
     const onWechatyMessage = async (message: Message) => {
       // ignore the messages not related to x.yao
-      if (message.room() && !(await message.mentionSelf())) {
+
+      if (message.room() && (!(await message.mentionSelf()) || (await message.mentionList()).length > 1)) {
         if (config.log_msg_show_unrelated) {
           log.info(`[ ... ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
         }
@@ -228,7 +242,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
 
 
       // jira:bind-project -p REDKE223
-      const text = message.text();
+      const text = processMessage(message);
       const { brain, command } = supportedBrain(text);
       if (brain) {
         const channel = config.redis_channel_prefix + brain;
