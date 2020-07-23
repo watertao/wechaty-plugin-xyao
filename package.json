@@ -29,7 +29,8 @@
     "tstest": "^0.4.10",
     "wechaty": "^0.43.2",
     "wechaty-puppet-mock": "^0.22.31",
-    "wechaty-puppet-padplus": "^0.6.3"
+    "wechaty-puppet-padplus": "^0.6.3",
+    "log4js": "^6.3.0"
   },
   "private": false,
   "main": "dist/src/mod.js",

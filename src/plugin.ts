@@ -1,9 +1,9 @@
 import {
   Wechaty,
   WechatyPlugin,
-  log,
   Message, UrlLink, FileBox, Room
 } from 'wechaty';
+import log4js from 'log4js';
 import { normalizeConfig }  from './normalize-config';
 import redis from 'redis';
 import indexOf from 'lodash.indexof';
@@ -25,6 +25,9 @@ export interface XyaoConfig {
   brains_cli: string[],
   brains_ai?: string,
 
+  log_level?: string,
+  log_appender?: string,
+  log_file?: string,
   log_msg_length?: number,
   log_msg_show_unrelated?: boolean,
 
@@ -34,25 +37,40 @@ export interface XyaoConfig {
 
 
 function Xyao (config: XyaoConfig): WechatyPlugin {
-  log.info('x.yao', 'initiate plugin with config: %s', JSON.stringify(config))
 
   normalizeConfig(config)
 
+  log4js.configure({
+    appenders: {
+      stdout: { type: 'stdout' },
+      dateFile: { type: 'dateFile', filename: config.log_file, pattern: '.yyyy-MM-dd' }
+    },
+    categories: {
+      'x.yao': { appenders: [ config.log_appender! ], level: config.log_level!},
+      default: { appenders: [ 'stdout' ], level: 'INFO'}
+    }
+  });
+
+  const log = log4js.getLogger('x.yao');
+
+  log.info('initiate plugin with config: %s', JSON.stringify(config))
+
+
   const onRedisReady = (client: string) => {
-    return () => log.info('x.yao', `redis(${client}) - connected`);
+    return () => log.info(`redis(${client}) - connected`);
   };
 
   const redisRetryStrategy = (client: string) => {
     return (options: any) => {
-      log.error('x.yao', `redis(${client}) - error: ${ options.error ? options.error.message : 'connection lost' }`)
-      log.info('x.yao', `redis(${client}) - try reconnect to redis after ${config.redis_retry_interval} ms`);
+      log.error(`redis(${client}) - error: ${ options.error ? options.error.message : 'connection lost' }`)
+      log.info(`redis(${client}) - try reconnect to redis after ${config.redis_retry_interval} ms`);
       return config.redis_retry_interval;
     }
   };
 
   const onRedisError = (client: string) => {
     return  (e: Error) => {
-      log.error('x.yao', `redis(${client}) - error: ${ e.message }`);
+      log.error(`redis(${client}) - error: ${ e.message }`);
       process.exit();
     };
   };
@@ -60,7 +78,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
 
 
   const onReconnecting = (client: string) => {
-    return () => log.info('x.yao', `redis(${client}) - reconnecting...`);
+    return () => log.info(`redis(${client}) - reconnecting...`);
   };
 
   const subscriber = redis.createClient({
@@ -94,7 +112,6 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
   publisher.on('reconnecting', onReconnecting('pub'))
 
   return function XyaoPlugin (wechaty: Wechaty) {
-    log.verbose('x.yao', 'Xyao(%s)', wechaty)
 
     const supportedBrain = (text: string) => {
       if (text.indexOf(":") > 0) {
@@ -125,10 +142,10 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
     };
 
     const onUserLogin = (user: string) => {
-      log.info('x.yao', `user successfully logged in : ${ user }`);
+      log.info(`user successfully logged in : ${ user }`);
     }
 
-    const onError = (e: Error) => { log.error('x.yao', `wechaty error - ${ e.message }`) };
+    const onError = (e: Error) => { log.error(`wechaty error - ${ e.message }`) };
 
     const chkDirtyMessage = (() => {
       // const freqMap = {};
@@ -145,19 +162,19 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
     })();
 
     const onRedisMessage = async (_: string, message: string) => {
-      log.info('x.yao', `redis(sub) - ${ message }`)
+      log.info(`[ ^o^ ] - ${ message }`)
       const rMessage = JSON.parse(message);
       const { to, room, entities } = rMessage;
       const toContact = await wechaty.Contact.load(to.id);
       if (!toContact) {
-        log.warn('x.yao', `user [ ${ to.name } ] cannot be found, abandon this message`);
+        log.warn(`user [ ${ to.name } ] cannot be found, abandon this message`);
         return;
       }
       let rRoom: Room | null;
       if (room) {
         rRoom = await wechaty.Room.load(room.id);
         if (!rRoom) {
-          log.warn('x.yao', `room [ ${ room.topic } ] cannot be found, abandon this message`);
+          log.warn(`room [ ${ room.topic } ] cannot be found, abandon this message`);
           return;
         }
       }
@@ -199,14 +216,14 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       // ignore the messages not related to x.yao
       if (message.room() && !(await message.mentionSelf())) {
         if (config.log_msg_show_unrelated) {
-          log.info('x.yao', `[ ... ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+          log.info(`[ ... ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
         }
         return;
       }
 
       if (chkDirtyMessage(message)) { return; }
 
-      log.info('x.yao', `[ ooo ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+      log.info(`[ ooo ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
 
 
       // jira:bind-project -p REDKE223
@@ -215,12 +232,12 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       if (brain) {
         const channel = config.redis_channel_prefix + brain;
         const instruction = JSON.stringify(await makeInstruction(message, command));
-        log.info('x.yao', `[ >>> ] [ ${ channel } ] ${ instruction }`);
+        log.info(`[ >>> ] [ ${ channel } ] ${ instruction }`);
         publisher.publish(channel, instruction);
       } else {
         const channel = config.redis_channel_prefix + config.brains_ai!;
         const question = JSON.stringify(await makeQuestion(message));
-        log.info('x.yao', `[ ))) ] [ ${ channel } ] ${ question }`);
+        log.info(`[ ))) ] [ ${ channel } ] ${ question }`);
         publisher.publish(channel, question);
       }
     }
