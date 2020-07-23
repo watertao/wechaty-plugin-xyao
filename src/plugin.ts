@@ -3,6 +3,7 @@ import {
   WechatyPlugin,
   Message, UrlLink, FileBox, Room
 } from 'wechaty';
+import { generate } from 'qrcode-terminal'
 import log4js from 'log4js';
 import { normalizeConfig }  from './normalize-config';
 import redis from 'redis';
@@ -241,6 +242,12 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
         publisher.publish(channel, question);
       }
     }
+
+    wechaty.on('scan', (qrcode: string) => {
+      generate(qrcode, {small: true,}, (graph: string) =>{
+        log.info("\n" +graph);
+      })
+    });
 
     wechaty.on('login', onUserLogin);
     wechaty.on('error', onError);
