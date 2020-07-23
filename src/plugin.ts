@@ -155,7 +155,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       }
       let rRoom: Room | null;
       if (room) {
-        rRoom = await wechaty.Room.find({ topic: room.topic });
+        rRoom = await wechaty.Room.load(room.id);
         if (!rRoom) {
           log.warn('x.yao', `room [ ${ room.topic } ] cannot be found, abandon this message`);
           return;
@@ -173,7 +173,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
             convertedEntities.push(FileBox.fromBase64(entity.content, entity.fileName));
             break;
           case 'CONTACT':
-            const contact = await wechaty.Contact.find({ name: entity.name });
+            const contact = await wechaty.Contact.load(entity.id );
             convertedEntities.push(contact);
             break;
           case 'URL_LINK':
@@ -190,7 +190,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
         });
       } else {
         convertedEntities.forEach(entity => {
-          rRoom!.say(entity, [ toContact ]);
+          rRoom!.say(entity, ...[ toContact ]);
         });
       }
     };
