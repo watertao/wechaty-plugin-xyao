@@ -127,22 +127,18 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       return { brain: null, command: ''};
     }
 
-    const makeInstruction = async (message: Message,  command: string) => {
+    const makeInstruction = async (message: Message,  text: string) => {
       return {
-        from: { id: message.from()?.id, name: message.from()?.name() },
-        isPrivate: message.to() ? true : false,
+        from: {
+          id: message.from()?.id,
+          name: message.from()?.name(),
+          isMaster: indexOf(config.masters, message.from()?.id) >= 0 ? true : false,
+        },
         room: message.room() ? { id: message.room()?.id, topic: (await message.room()?.topic()) } : null,
-        command,
+        text,
       };
     }
 
-    const makeQuestion = async (message: Message, processedText: string) => {
-      return {
-        from: { id: message.from()?.id, name: message.from()?.name() },
-        room: message.room() ? { id: message.room()?.id, topic: (await message.room()?.topic()) } : null,
-        text: processedText,
-      };
-    };
 
     const onUserLogin = (user: Contact) => {
       log.info(`user successfully logged in : ${ user.name() } ( ${ user.id } )`);
@@ -179,9 +175,19 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       log.info(`[ ^o^ ] - ${ message }`)
       const rMessage = JSON.parse(message);
       const { to, room, entities } = rMessage;
-      const toContact = await wechaty.Contact.load(to.id);
-      if (!toContact) {
-        log.warn(`user [ ${ to.name } ] cannot be found, abandon this message`);
+      const toContacts:any = [];
+      const mentionsContacts:Contact[] = [];
+      for (let i = 0; i < to.length; i++) {
+        const entry = to[i];
+        if (room && entry.isMention) {
+          mentionsContacts.push(await wechaty.Contact.load(entry.id))
+        } else {
+          toContacts.push(await wechaty.Contact.load(entry.id));
+        }
+      }
+
+      if (!toContacts || toContacts.length <= 0) {
+        log.warn(`user cannot be found, abandon this message`);
         return;
       }
       let rRoom: Room | null;
@@ -217,11 +223,17 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
 
       if (!room) {
         convertedEntities.forEach(entity => {
-          toContact.say(entity);
+          toContacts[0].say(entity);
         });
       } else {
+        const toNames = toContacts.map((item:any) => { return item.name(); }).join(",");
+        let isToNamesAppended = false;
         convertedEntities.forEach(entity => {
-          rRoom!.say(entity, ...[ toContact ]);
+          if (!isToNamesAppended && typeof entity === 'string') {
+            rRoom!.say(`${toContacts.length > 0 ? toNames + ':\n' : ''}` + entity, ...mentionsContacts);
+            isToNamesAppended = true;
+          }
+
         });
       }
     };
@@ -251,7 +263,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
         publisher.publish(channel, instruction);
       } else {
         const channel = config.redis_channel_prefix + config.brains_ai!;
-        const question = JSON.stringify(await makeQuestion(message, text));
+        const question = JSON.stringify(await makeInstruction(message, text));
         log.info(`[ ))) ] [ ${ channel } ] ${ question }`);
         publisher.publish(channel, question);
       }

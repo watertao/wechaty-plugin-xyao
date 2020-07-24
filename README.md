@@ -115,6 +115,6 @@ bot.start()
 1. `redis_port`: redis 端口
 1. `redis_password`: redis 密码
 1. `redis_retry_interval`: redis 断线重连间隔
-1. `masters`: 机器人的主人账号，有部分指令必须是主人发起的才会执行
+1. `masters`: 机器人的主人账号(注意是contact.id)，有部分指令必须是主人发起的才会执行
 1. `brains_cli`: brain 列表
 
