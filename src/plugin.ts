@@ -226,14 +226,17 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
           toContacts[0].say(entity);
         });
       } else {
-        const toNames = toContacts.map((item:any) => { return item.name(); }).join(",");
-        let isToNamesAppended = false;
-        convertedEntities.forEach(entity => {
-          if (!isToNamesAppended && typeof entity === 'string') {
-            rRoom!.say(`${toContacts.length > 0 ? toNames + ':\n' : ''}` + entity, ...mentionsContacts);
-            isToNamesAppended = true;
+        if (toContacts.length > 0) {
+          const toNames = toContacts.map((item:any) => { return item.name(); }).join(", ");
+          if (entities[0].type === 'STRING') {
+            convertedEntities[0] = `${toNames}:\n${convertedEntities[0]}`;
+          } else {
+            convertedEntities.unshift(`${toNames}:`);
           }
+        }
 
+        convertedEntities.forEach(entity => {
+          rRoom!.say(entity, ...mentionsContacts);
         });
       }
     };
