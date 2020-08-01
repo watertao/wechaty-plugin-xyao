@@ -1,8 +1,27 @@
 # wechaty-plugin-xyao
 
-wechaty-plugin-xyao 插件可以帮助我们快速构建出一个基于 wechaty 的分布式指令分发机器人。
+wechaty-plugin-xyao 插件可以让你的 wechaty bot 具备以分布式模块执行自定义指令的能力。
 
-![QnAMaker for Wechaty Community Knowledge Base](docs/images/arc.png)
+![architecture](docs/images/interaction-sample.png)
+
+bot 将 `fin:` 前缀的指令通过队列交给 fin 相关的模块处理，而 `x:`前缀的指令则通过队列交给 x 对应的模块。而对于哪些无法被识别
+为指令的消息，会交给百度 unit 智能闲聊。
+
+
+## why wechaty-plugin-xyao
+
+使用这个插件，至少会带来以下几个优势：
+1. 如果机器人的业务处理和微信通讯部分都集中在单个进程，随着业务逻辑数量的增长，处理性能会遇到瓶颈，而解耦通讯与业务，并独立部署，能够有效缓解
+这个问题。
+2. 独立出的业务处理模块可以采用任意适合该业务领域的语言
+3. 由于采用了基于 redis pub/sub 的消息中间件作为机器人和 brain 的通讯，因此即使两者之间由于 NAT 无法提供基于固定公网 IP 的 RPC 服务，也可以通过这种方式
+打通交互。
+
+
+
+## 架构设计
+
+![architecture](docs/images/arc.png)
 
 机器人在收到指令后，按规则通过 redis 分发给指定的 brain 模块去处理。
 
@@ -29,14 +48,6 @@ brain 模块的开发并不限定语言或平台，任何能够连上 redis 并�
 | [xyao-brain-fin-info](https://github.com/watertao/xyao-brain-fin-info) | 待开发 | 提供股市相关信息的查询或推送特性 |
 
 
-## why wechaty-plugin-xyao
-
-使用这个插件，至少会带来以下几个优势：
-1. 如果机器人的业务处理和微信通讯部分都集中在单个进程，随着业务逻辑数量的增长，处理性能会遇到瓶颈，而解耦通讯与业务，并独立部署，能够有效缓解
-这个问题。
-2. 独立出的业务处理模块可以采用任意适合该业务领域的语言
-3. 由于采用了基于 redis pub/sub 的消息中间件作为机器人和 brain 的通讯，因此即使两者之间由于 NAT 无法提供基于固定公网 IP 的 RPC 服务，也可以通过这种方式
-打通交互。
 
 
 ## 指令
