@@ -69,7 +69,7 @@ bot.start()
     .catch(console.error)
 ```
 
-### 1 配置插件
+### 配置插件
 
 1. `redis_host`: redis ip
 1. `redis_port`: redis 端口
@@ -105,7 +105,7 @@ bot 在收到消息后，先尝试识别指令，识别为指令后，按前缀�
 每个 brain 模块都有自己唯一的标识，该标识会作为指令的前缀，比如 `fin:index` 指令会交给标识为 `fin` 的 brain 模块。
 
 
-## 指令
+## 🌀 指令
 
 指令是一条带有规定格式的微信消息。
 
@@ -130,7 +130,7 @@ jira:echo tell me what i have said
 - `jira:echo tell me what i have said` 返回 echo 的内容，用于检验该 brain 模块当前是否在线并正常工作
 
 
-## brain 模块
+## 🧠 brain 模块
 
 通过 wechaty-plugin-xyao 插件创建的 wechaty 机器人，它只负责微信消息的收发，若要使它具备一定的业务处理能力，就需要为其扩展 brain 模块。
 机器人收到消息并识别为指令后，将指令通过 redis 交给相应的 brain 模块，brain 根据指令种类及选项参数进行相应的业务处理，并将处理结果通过redis
@@ -141,12 +141,12 @@ jira:echo tell me what i have said
 
 brain 模块的开发并不限定语言或平台，任何能够连上 redis 并且可以处理 json 的语言都可以开发 brain。
 
-### 基于 java springboot 快速开发 brain 模块快
+### 基于 java springboot 快速开发 brain 模块
 
 为了简化 brain 模块的开发，可参考基于 java springboot 的 brain 开发框架（比如 [xyao-brain-trunk](https://github.com/watertao/xyao-brain-trunk) ），它会尽量将业务无关部分的逻辑统一处理掉，并默认提供了 help 或 echo 指令。
 
 项目目录结构如下：
-```bash
+```
 ├── myapp
 |   ├── src
 |   |   └── main
@@ -209,7 +209,7 @@ logging.encodePattern = %d{yyyy/MM/dd-HH:mm:ss SSS} %-5level - %msg %n
 ```properties
 xyao.brain = foo
 ```
-(其他诸如 reis 连接参数，日志 以及 帮助信息等配置自行按照实际情况修改)
+(其他诸如 redis 连接参数，日志 以及 帮助信息等配置自行按照实际情况修改)
 
 2. 添加 `io.github.watertao.xyao.instruction.RandomHandler` 类：
 ```java
@@ -223,12 +223,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.Random;
 
-@Service("random")
+@Service("random")  // bean name 必须是指令名
 @Instruction(
-        syntax = "random <option>",
-        description = "返回随机数，可通过参数设置最大范围",
-        masterOnly = false,
-        msgEnv = MessageEnvironmentEnum.BOTH
+        syntax = "random <option>", // 帮助信息中的语法
+        description = "返回随机数，可通过参数设置最大范围",  // 帮助信息中的 描述
+        masterOnly = false, // 这条指令是否只能是 master 发起
+        msgEnv = MessageEnvironmentEnum.BOTH    // 这条指令使用的范围是私聊还是群聊，或都支持
 )
 public class RandomHandler extends AbstractInstructionHandler {
     
@@ -266,12 +266,21 @@ public class RandomHandler extends AbstractInstructionHandler {
 }
 ``` 
 
-搞定。
 
 接着我们通过向机器人发送私聊或群内 @ 机器人，发送消息： `foo:random -m 100` ，机器人就会回复 0~100 以内的随机数。
 
+完成一个指令就是这么简单 😁。
 
 
+## Maintainer
+
+1. watertao,
+[Tao Wu](https://github.com/watertao),
+\<1059912278@qq.com\>
+
+## Copyright & License
+
+* Code released under the Apache-2.0 License
 
 
 
