@@ -7,11 +7,20 @@ wechaty-plugin-xyao 插件可以让你的 wechaty bot 具备以分布式模块�
 
 ![sample](docs/images/interaction-sample.png)
 
-bot 将 `fin:` 前缀的指令通过队列交给 fin 相关的模块处理，而 `x:`前缀的指令则通过队列交给 x 对应的处理模块。而对于哪些无法被识别
-为指令的消息，会统一交给某个处理模块（通常是一个具备智能闲聊能力的处理模块，比如 百度 unit）。
+上例中， bot 将 `fin:` 前缀的指令通过队列交给 fin 关联的模块处理，而 `x:` 前缀的指令交给 x 对应的模块。那些无法被识别
+为指令的消息（比如 `你好` `午饭吃什么`），则统一交给某个指定模块处理（通常是一个具备智能闲聊能力的处理模块，比如 百度 unit）。
 
 
-这些处理模块被称之为 `brain 模块`，它相当于为 bot 赋予了某一个部分领域知识的副脑。
+这些处理模块被称之为 `brain 模块`，它们为 bot 赋予了某一个特定领域的处理能力。
+
+计划中的 brain 模块：
+
+|  brain  | status | description  |
+|  ----  | ---- | ----  |
+| [xyao-brain-trunk](https://github.com/watertao/xyao-brain-trunk) | 开发中 | 提供了微信机器人基本的处理能力，比如自定义 cron 形式的提醒，设置 todo-list, 消息搬运等特性 |
+| [xyao-brain-jira](https://github.com/watertao/xyao-brain-jira) |  开发中 |提供 atlassion jira 相关的指令，比如将某个群组与某个 JIRA 项目绑定，定期推送每日 issue 进度及工时登录，检查 issue 规范性等 |
+| [xyao-brain-fin-info](https://github.com/watertao/xyao-brain-fin-info) | 开发中 | 提供股市相关信息的查询或推送特性 |
+| xyao-brain-translate | 待开发 | 提供中英文互翻的特性 |
 
 
 ## Requirements
@@ -78,9 +87,9 @@ bot.start()
 ## why wechaty-plugin-xyao
 
 使用这个插件，至少会带来以下几个优势：
-1. 如果机器人的业务处理和微信通讯部分都集中在单个进程，随着业务逻辑数量的增长，处理性能会遇到瓶颈，且一部分逻辑出现问题可能导致整个 bot crash，而解耦通讯与业务，并独立部署不同业务，能够有效缓解
-这个问题。
-2. 独立出的业务处理模块( `brain 模块` )可以采用任意适合该领域业务的语言（目前提供了一个基于 java springboot 的 brain 模块开发框架）。
+1. 如果 bot 的业务处理和微信通讯两部分逻辑都集中在单个进程，随着业务逻辑的增长，部分逻辑出现问题可能导致整个 bot crash，且单进程受限于单个
+节点的处理能力，也限制了能力的扩展。将微信通讯与业务解耦，业务和业务独立部署，能够有效缓解这些问题。
+2. 独立出的业务处理模块可以采用任意适合该领域业务的语言（目前提供了一个基于 java springboot 的 brain 模块开发框架）。
 3. 由于采用了基于 pub/sub 的消息中间件作为机器人和 brain 的通讯，因此即使两者之间由于 NAT 无法提供基于固定公网 IP 的 RPC 服务，也可以通过这种方式
 打通交互。
 
@@ -110,7 +119,7 @@ jira:bind-project -p READK223
  - `bind-project` 是指令关键字，brain 模块根据此关键字决定采用哪段业务处理逻辑
  - `-p READK223` 是指令的选项，通常一个指令会有0到多个选项，采用不同的选项，会影响业务处理的逻辑
  
-在开发 brain 的时候，建议支持 help 和 echo 指令，比如：
+在开发 brain 模块 的时候，建议都支持 help 和 echo 指令，比如：
 ```
 jira:help
 jira:help bind-project
@@ -261,14 +270,6 @@ public class RandomHandler extends AbstractInstructionHandler {
 
 接着我们通过向机器人发送私聊或群内 @ 机器人，发送消息： `foo:random -m 100` ，机器人就会回复 0~100 以内的随机数。
 
-
-## 已完成或计划中的 brain
-
-|  brain  | status | description  |
-|  ----  | ---- | ----  |
-| [xyao-brain-trunk](https://github.com/watertao/xyao-brain-trunk) | 开发中 | 提供了微信机器人基本的处理能力，比如自定义 cron 形式的提醒，设置 todo-list, 消息搬运等特性 |
-| [xyao-brain-jira](https://github.com/watertao/xyao-brain-jira) |  开发中 |提供 atlassion jira 相关的指令，比如将某个群组与某个 JIRA 项目绑定，定期推送每日 issue 进度及工时登录，检查 issue 规范性等 |
-| [xyao-brain-fin-info](https://github.com/watertao/xyao-brain-fin-info) | 待开发 | 提供股市相关信息的查询或推送特性 |
 
 
 
