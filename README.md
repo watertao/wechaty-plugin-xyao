@@ -134,9 +134,132 @@ brain 模块的开发并不限定语言或平台，任何能够连上 redis 并�
 
 ### 基于 java springboot 快速开发 brain 模块快
 
-为了简化 brain 模块的开发，可参考基于 java springboot 的 brain 开发框架，它会尽量将业务无关部分的逻辑统一处理掉，并默认提供了 help 或 echo 指令。
+为了简化 brain 模块的开发，可参考基于 java springboot 的 brain 开发框架（比如 [xyao-brain-trunk](https://github.com/watertao/xyao-brain-trunk) ），它会尽量将业务无关部分的逻辑统一处理掉，并默认提供了 help 或 echo 指令。
 
+项目目录结构如下：
+```bash
+├── myapp
+|   ├── src
+|   |   └── main
+|   |       ├── java
+|   |       |   └── io
+|   |       |       └── github
+|   |       |           └── watertao
+|   |       |               └──xyao
+|   |       |                  └──infras
+|   |       |                  └──instruction
+|   |       └── resources
+|   |           └── application.properties
+│   └── pom.xml
+```
 
+其中 `io.github.watertao.xyao.infras` 这个 package 中包含了与 redis 通讯，指令的序列化和反序列化以及 echo 和 help 指令。同时也定义了
+开发指令时需用到的一些 annotation 和 模型类。
+
+`io.github.watertao.xyao.instruction` 这个 package 用于放置自定义指令处理类。
+
+`application.properties` 是配置文件，它包含了以下配置：
+```properties
+# dev: 开发模式； prod: 生产模式。 这两种模式的主要区别是日志的输出不同，前者输出到控制台，后者输出到文件。一般我们在生产环境下，jar
+# 包同级目录中放一个 config/application.properties 用于覆盖 jar 内的 properties。
+spring.profiles.active = dev
+
+# 本模块的 brain 标识
+xyao.brain = fin
+
+# bot 的 topic 名，本模块可以通过这个 topic 以 x.yao 的身份向指定用户或群组发送消息
+xyao.channel = x.yao
+
+# help -w 指令时向用户发送一个 UrlLink 形式的帮助文档
+xyao.help.url = https://github.com/watertao/xyao-brain-fin-info/wiki/%5B-%23fin-%5D-Instruction-Manual-of-xyao-brain-fin-info
+xyao.help.title = [ #fin ] Instruction Manual of xyao brain fin info
+xyao.help.description = xyao-brain-fin-info is a brain module of wechaty-plugin-xyao, it provides common features, such as showing Shanghai or Shenzhen index, the real time price of specified stock , etc...
+xyao.help.thumbnail = https://coding-net-production-file-ci.codehub.cn/1190d970-ce81-11ea-9a30-ed2db94588f5.jpeg?sign=yZ8k7anwCH4ma8CRXmTKSOc/2pRhPTEyNTcyNDI1OTkmaz1BS0lEYXk4M2xGbWFTNlk0TFRkek1WTzFTZFpPeUpTTk9ZcHImZT0xNTk1OTAyNDM3JnQ9MTU5NTY4NjQzNyZyPTMwMDE1OTAmZj0vMTE5MGQ5NzAtY2U4MS0xMWVhLTlhMzAtZWQyZGI5NDU4OGY1LmpwZWcmYj1jb2RpbmctbmV0LXByb2R1Y3Rpb24tZmlsZQ==
+
+# redis 连接配置
+spring.redis.host = localhost
+spring.redis.port = 6379
+spring.redis.password = 123456
+
+# 日志输出级别
+logging.root.level = INFO
+# 系统日志输出 pattern，缺省为 %d{yyyy/MM/dd-HH:mm:ss SSS} %-5level - %msg %n
+logging.encodePattern = %d{yyyy/MM/dd-HH:mm:ss SSS} %-5level - %msg %n
+# logging.path = /myapp/log
+# 日志文件的文件名，缺省为 spring.log
+# logging.file = myapp.log
+# 日志文件按时间切割的模式，缺省为 yyyy-MM-dd
+# logging.splitPattern = yyyy-MM-dd
+# 日志文件保留的个数，缺省为 30
+# logging.maxHistory = 30
+```
+
+以开发一个返回随机数的指令为例。brain 标识为 `foo`, 指令名为 `random`，参数 `-m` 代表随机数小于该参数指定的数。
+
+1. 修改 application.properties：
+```properties
+xyao.brain = foo
+```
+(其他诸如 reis 连接参数，日志 以及 帮助信息等配置自行按照实际情况修改)
+
+2. 添加 `io.github.watertao.xyao.instruction.RandomHandler` 类：
+```java
+package io.github.watertao.xyao.instruction;
+
+import io.github.watertao.xyao.infras.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Random;
+
+@Service("random")
+@Instruction(
+        syntax = "random <option>",
+        description = "返回随机数，可通过参数设置最大范围",
+        masterOnly = false,
+        msgEnv = MessageEnvironmentEnum.BOTH
+)
+public class RandomHandler extends AbstractInstructionHandler {
+    
+    // 注入此 bean 用于发送消息至 redis
+    @Autowired
+    private XyaoChannelProxy channelProxy;
+    
+    @Override
+    protected Options defineOptions() {
+        Options options = new Options();
+        options.addOption("m", "max", true,"随机数的最大范围");
+        return options;
+    }
+
+    @Override
+    protected void handle(XyaoInstruction instruction, CommandLine command) {
+        Integer max = 10;   // 默认最大范围是 10
+        
+        // 如果用户指定了 m 选项，则最大范围设置成该选项值
+        // （为了演示，忽略非数字字符的异常情况处理）
+        if (command.hasOption("m")) {
+            max = Integer.valueOf(command.getOptionValue("n"));
+        }
+        
+        Integer randomNum = new Random().nextInt(max + 1);
+
+        // 通过父类方法 makeResponseMessage 构建响应消息，该方法会将回复对象以及群组设置为指令发起人和指令发起时的群组
+        XyaoMessage xyaoMessage = makeResponseMessage(instruction);
+        xyaoMessage.getEntities().add(new XyaoMessage.StringEntity(String.valueOf(randomNum)));
+        
+        // 发送响应至 redis
+        channelProxy.publish(xyaoMessage);
+        
+    }
+}
+``` 
+
+搞定。
+
+接着我们通过向机器人发送私聊或群内 @ 机器人，发送消息： `foo:random -m 100` ，机器人就会回复 0~100 以内的随机数。
 
 
 ## 已完成或计划中的 brain
