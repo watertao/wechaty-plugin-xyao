@@ -186,7 +186,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
         }
       }
 
-      if (!toContacts || toContacts.length <= 0) {
+      if ((!toContacts || toContacts.length <= 0) && (!mentionsContacts || mentionsContacts.length <= 0)) {
         log.warn(`user cannot be found, abandon this message`);
         return;
       }
