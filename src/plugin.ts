@@ -10,31 +10,7 @@ import redis from 'redis';
 import indexOf from 'lodash.indexof';
 import trim from 'lodash.trim';
 import truncate from 'lodash.truncate';
-
-
-export interface XyaoConfig {
-
-  redis_host: string,
-  redis_port: number,
-  redis_password?: string,
-  redis_channel_sense?: string,
-  redis_channel_prefix?: string,
-  redis_retry_interval?: number,
-
-  masters: string[],
-
-  brains_cli: string[],
-  brains_ai?: string,
-
-  log_level?: string,
-  log_appender?: string,
-  log_file?: string,
-  log_msg_length?: number,
-  log_msg_show_unrelated?: boolean,
-
-  msg_abandon_age?: number,
-
-}
+import XyaoConfig from './xyao-config.type';
 
 
 function Xyao (config: XyaoConfig): WechatyPlugin {
@@ -151,8 +127,12 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       // const freqMap = {};
       return (message: Message): boolean => {
         // const userName = message.from()!.name();
-        message.from();
+        // message.from();
         // todo:
+
+        if (!trim(message.text())) {
+          return true;
+        }
 
         if (message.age() > config.msg_abandon_age!) {
           return true;
@@ -172,7 +152,7 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
     }
 
     const onRedisMessage = async (_: string, message: string) => {
-      log.info(`[ ^o^ ] - ${ message }`)
+      log.info(`[ r -> x ] - ${ message }`)
       const rMessage = JSON.parse(message);
       const { to, room, entities } = rMessage;
       const toContacts:any = [];
@@ -242,18 +222,26 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
     };
 
     const onWechatyMessage = async (message: Message) => {
-      // ignore the messages not related to x.yao
 
+      // ignore dirty messages such as blank messages, not text messages , expired messages and etc.
+      if (chkDirtyMessage(message)) {
+        log.info(`[ ...dty ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+        return;
+      }
+
+      // ignore the messages not related to x.yao
+      // - whisper messages will be treated as related messages
+      // - room messages with 2 situations below will be treated as unrelated message:
+      //   1. the message is not mention x.yao
+      //   2. the mention list is more than 1 users (means messages are not target to x.yao)
       if (message.room() && (!(await message.mentionSelf()) || (await message.mentionList()).length > 1)) {
         if (config.log_msg_show_unrelated) {
-          log.info(`[ ... ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+          log.info(`[ ...ign ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
         }
         return;
       }
 
-      if (chkDirtyMessage(message)) { return; }
-
-      log.info(`[ ooo ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
+      log.info(`[ w -> x ] ${ truncate(message.text(), { length: config.log_msg_length }) }`)
 
 
       // jira:bind-project -p REDKE223
@@ -272,9 +260,11 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
       }
     }
 
+
+
     wechaty.on('scan', (qrcode: string) => {
       generate(qrcode, {small: true,}, (graph: string) =>{
-        log.info("\n" +graph);
+        log.info("\n" + graph);
       })
     });
 
