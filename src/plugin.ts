@@ -271,6 +271,9 @@ function Xyao (config: XyaoConfig): WechatyPlugin {
     wechaty.on('login', onUserLogin);
     wechaty.on('error', onError);
     wechaty.on('message', onWechatyMessage);
+    wechaty.on('logout', () => {
+      console.log('logggggggggg out')
+    })
 
     subscriber.on('message', onRedisMessage);
     subscriber.subscribe(config.redis_channel_sense!);
